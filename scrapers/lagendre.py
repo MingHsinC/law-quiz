@@ -14,43 +14,113 @@ def parse_filename(filename: str) -> tuple[int, str, str] | None:
         return None
     return int(m.group(1)), m.group(2), m.group(3)
 
-def parse_questions(text: str) -> list[dict]:
-    """Parse question file → list of {no, text, A, B, C, D}."""
-    questions = []
-    blocks = re.split(r'\n(?=\d+[\.、])', text.strip())
-    opt_re = re.compile(r'[\(（]([ABCD])[\)）]\s*(.*?)(?=\s*[\(（][ABCD][\)）]|$)', re.DOTALL)
+# 考選部真實檔案以造字字元 U+E18C..U+E18F 當作 (A)(B)(C)(D) 選項標記
+_PUA_OPT_BASE = 0xE18C  # +0=A, +1=B, +2=C, +3=D
 
-    for block in blocks:
-        block = block.strip()
-        m = re.match(r'^(\d+)[\.、]\s*(.*)', block, re.DOTALL)
+def _extract_options(block: str) -> dict[str, str] | None:
+    """從選項區塊抽出 {A,B,C,D}。支援造字標記與 ASCII (A)/（Ａ） 兩種格式。"""
+    # 格式一：考選部造字標記 U+E18C..U+E18F
+    positions = []
+    for i in range(4):
+        idx = block.find(chr(_PUA_OPT_BASE + i))
+        if idx >= 0:
+            positions.append((idx, 'ABCD'[i]))
+    if len(positions) == 4:
+        positions.sort()
+        opts = {}
+        for k, (idx, letter) in enumerate(positions):
+            end = positions[k + 1][0] if k + 1 < len(positions) else len(block)
+            opts[letter] = re.sub(r'\s+', ' ', block[idx + 1:end]).strip()
+        return opts if all(opts.values()) else None
+
+    # 格式二：ASCII/全形 (A)(B)(C)(D)
+    opt_re = re.compile(
+        r'[\(（]([ABCD])[\)）]\s*(.*?)(?=\s*[\(（][ABCD][\)）]|$)', re.DOTALL)
+    opts = {m.group(1): re.sub(r'\s+', ' ', m.group(2)).strip()
+            for m in opt_re.finditer(block)}
+    if len(opts) == 4 and all(opts.values()):
+        return opts
+    return None
+
+def _is_question_start(line: str) -> "re.Match | None":
+    """題目行：數字+空白+內容，且非『100年…』之類標題行。"""
+    if re.match(r'^\d+\s*年', line):
+        return None
+    return re.match(r'^(\d+)[\.\s、]\s*(\S.*)', line)
+
+def parse_questions(text: str) -> list[dict]:
+    """Parse question file → list of {no, text, A, B, C, D}.
+
+    真實格式：題幹單獨一行（`1 題目…`），選項以造字標記跟在後續行。
+    """
+    lines = text.splitlines()
+    questions = []
+    i = 0
+    while i < len(lines):
+        m = _is_question_start(lines[i])
         if not m:
+            i += 1
             continue
-        no, rest = int(m.group(1)), m.group(2)
-        opts = {om.group(1): om.group(2).strip() for om in opt_re.finditer(rest)}
-        if len(opts) != 4:
-            continue
-        first = opt_re.search(rest)
-        q_text = rest[:first.start()].strip() if first else ''
-        if not q_text:
-            continue
-        questions.append({'no': no, 'text': q_text,
-                          'A': opts['A'], 'B': opts['B'],
-                          'C': opts['C'], 'D': opts['D']})
+        no, stem = int(m.group(1)), m.group(2).strip()
+        # 收集到下一題之前的所有行當作選項區塊
+        j = i + 1
+        opt_lines = []
+        while j < len(lines) and not _is_question_start(lines[j]):
+            opt_lines.append(lines[j])
+            j += 1
+        opts = _extract_options('\n'.join(opt_lines))
+        if opts and stem:
+            questions.append({'no': no, 'text': stem,
+                              'A': opts['A'], 'B': opts['B'],
+                              'C': opts['C'], 'D': opts['D']})
+        i = j
     return questions
 
 def parse_answers(text: str) -> dict[int, str]:
-    """Parse ANS file → {question_no: letter}. Handles three formats."""
-    answers: dict[int, str] = {}
-    for line in text.strip().splitlines():
-        line = line.strip()
+    """Parse ANS file → {question_no: letter}.
+
+    支援三種格式：
+    1. 考選部欄位式（題號區塊 / 答案區塊 交錯）
+    2. `1.(B)` 或 `1.B`
+    3. 每行一個字母
+    """
+    lines = [l.strip() for l in text.splitlines()]
+
+    # 格式一：考選部欄位式 —— 蒐集成對的「題號區塊」「答案區塊」
+    nums_blocks: list[list[int]] = []
+    ans_blocks: list[list[str]] = []
+    mode = None
+    for s in lines:
+        if s == '題號':
+            mode = 'num'; nums_blocks.append([]); continue
+        if s == '答案':
+            mode = 'ans'; ans_blocks.append([]); continue
+        if not s:
+            continue
+        if mode == 'num' and re.match(r'^\d+$', s):
+            nums_blocks[-1].append(int(s))
+        elif mode == 'ans' and re.match(r'^[A-E]+#?$', s):
+            # 單一答案如 'D'；送分題可能為多字母如 'CD'（C、D 皆算對）
+            ans_blocks[-1].append(s.rstrip('#'))
+        elif mode == 'ans':
+            mode = None  # 離開答案區塊（例如進入備註）
+    if nums_blocks and ans_blocks:
+        answers: dict[int, str] = {}
+        for nums, ans in zip(nums_blocks, ans_blocks):
+            for n, a in zip(nums, ans):
+                answers[n] = a
+        if answers:
+            return answers
+
+    # 格式二、三：逐行解析
+    answers = {}
+    for line in lines:
         if not line:
             continue
-        # "1.(B)" or "1.B"
         m = re.match(r'^(\d+)[\.\s][\(（]?([ABCD])[\)）]?', line)
         if m:
             answers[int(m.group(1))] = m.group(2)
             continue
-        # Plain letter per line
         m = re.match(r'^([ABCD])$', line)
         if m:
             answers[len(answers) + 1] = m.group(1)
@@ -94,14 +164,10 @@ def scrape_all() -> int:
                 continue
             questions = parse_questions(q_text)
             answers   = parse_answers(ans_text)
-            import re as _re
-            raw_blocks = [b for b in _re.split(r'\n(?=\d+[\.、])', q_text.strip()) if b.strip()]
-            n_numbered = len(raw_blocks)
             n_parsed = len(questions)
-            if n_parsed < n_numbered:
-                print(f'    ⚠ 題目解析：{n_parsed}/{n_numbered} 成功（{n_numbered - n_parsed} 題格式不符跳過）')
-            if len(answers) != n_parsed:
-                print(f'    ⚠ 答案筆數 {len(answers)} ≠ 題目筆數 {n_parsed}，部分題目答案可能為 None')
+            n_no_answer = sum(1 for q in questions if answers.get(q['no']) is None)
+            if n_no_answer:
+                print(f'    ⚠ {n_no_answer}/{n_parsed} 題無對應答案（answer=None）')
             records = [{
                 'no': q['no'], 'text': q['text'],
                 'options': {'A': q['A'], 'B': q['B'], 'C': q['C'], 'D': q['D']},

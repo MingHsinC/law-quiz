@@ -49,7 +49,8 @@ def api_attempt():
     if not q:
         return jsonify({'error': 'not found'}), 404
     answer     = q['answer']
-    is_correct = (chosen == answer) if answer else False
+    # answer 可能是多字母送分題（如 'CD'），選到其中任一即算對
+    is_correct = (chosen in answer) if answer else False
     db.record_attempt(qid, chosen, is_correct)
     return jsonify({'correct': is_correct, 'answer': answer,
                     'answer_available': answer is not None})
