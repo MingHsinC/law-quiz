@@ -80,6 +80,7 @@ def _local_ip() -> str:
         return s.getsockname()[0]
 
 if __name__ == '__main__':
+    db.init_db()  # ensure tables exist before running
     ip = _local_ip()
     print(f'\n電腦：http://localhost:5000')
     print(f'手機：http://{ip}:5000\n')
