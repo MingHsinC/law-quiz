@@ -26,7 +26,7 @@ def api_questions():
     bookmarked = set(db.get_bookmarked_ids())
     for q in questions:
         q['bookmarked'] = q['id'] in bookmarked
-        del q['answer']
+        q.pop('answer', None)
     return jsonify(questions)
 
 @app.route('/api/question/<int:qid>')
@@ -75,9 +75,12 @@ def api_bookmark(qid):
     return jsonify({'bookmarked': added})
 
 def _local_ip() -> str:
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.connect(('8.8.8.8', 80))
-        return s.getsockname()[0]
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(('8.8.8.8', 80))
+            return s.getsockname()[0]
+    except Exception:
+        return '127.0.0.1'
 
 if __name__ == '__main__':
     db.init_db()  # ensure tables exist before running

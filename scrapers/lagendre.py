@@ -94,6 +94,14 @@ def scrape_all() -> int:
                 continue
             questions = parse_questions(q_text)
             answers   = parse_answers(ans_text)
+            import re as _re
+            raw_blocks = [b for b in _re.split(r'\n(?=\d+[\.、])', q_text.strip()) if b.strip()]
+            n_numbered = len(raw_blocks)
+            n_parsed = len(questions)
+            if n_parsed < n_numbered:
+                print(f'    ⚠ 題目解析：{n_parsed}/{n_numbered} 成功（{n_numbered - n_parsed} 題格式不符跳過）')
+            if len(answers) != n_parsed:
+                print(f'    ⚠ 答案筆數 {len(answers)} ≠ 題目筆數 {n_parsed}，部分題目答案可能為 None')
             records = [{
                 'no': q['no'], 'text': q['text'],
                 'options': {'A': q['A'], 'B': q['B'], 'C': q['C'], 'D': q['D']},

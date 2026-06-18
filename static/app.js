@@ -112,7 +112,13 @@ const App = {
     [['A', q.opt_a], ['B', q.opt_b], ['C', q.opt_c], ['D', q.opt_d]].forEach(([letter, text]) => {
       const btn = document.createElement('button');
       btn.className = 'option-btn';
-      btn.innerHTML = `<span class="opt-label">${letter}</span><span>${text}</span>`;
+      const labelSpan = document.createElement('span');
+      labelSpan.className = 'opt-label';
+      labelSpan.textContent = letter;
+      const textSpan = document.createElement('span');
+      textSpan.textContent = text;
+      btn.appendChild(labelSpan);
+      btn.appendChild(textSpan);
       if (prev) {
         btn.disabled = true;
         if (letter === prev.answer)                    btn.classList.add('correct');
@@ -207,8 +213,14 @@ const App = {
     wrong.forEach(q => {
       const div = document.createElement('div');
       div.className = 'wrong-item';
-      div.innerHTML = `<div class="wrong-meta">${q.year}年 ${q.subject}</div>
-        <div class="wrong-text">${q.question_no}. ${q.question_text}</div>`;
+      const meta = document.createElement('div');
+      meta.className = 'wrong-meta';
+      meta.textContent = `${q.year}年 ${q.subject}`;
+      const text = document.createElement('div');
+      text.className = 'wrong-text';
+      text.textContent = `${q.question_no}. ${q.question_text}`;
+      div.appendChild(meta);
+      div.appendChild(text);
       div.onclick = () => this._jumpToQuestion(q);
       wrongList.appendChild(div);
     });
