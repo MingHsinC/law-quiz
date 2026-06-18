@@ -7,6 +7,7 @@ const App = {
   async init() {
     this._bindNav();
     this._bindHome();
+    this._bindExam();
     await this._loadFilters();
     await this._refreshHomeStats();
     this._showScreen('home');
@@ -39,6 +40,12 @@ const App = {
       };
     });
     document.getElementById('btn-start').onclick = () => this._startQuiz();
+  },
+
+  _bindExam() {
+    document.getElementById('btn-finish').onclick = () => this._finishExam();
+    document.getElementById('btn-redo').onclick   = () => this._startQuiz();
+    document.getElementById('btn-home-from-result').onclick = () => this._showScreen('home');
   },
 
   async _loadFilters() {
@@ -82,12 +89,15 @@ const App = {
     const subject = document.getElementById('filter-subject').value;
     const track   = this.exam === 'silu' ? document.getElementById('filter-track').value : '';
     const mode    = document.querySelector('input[name="mode"]:checked').value;
-    const params  = new URLSearchParams({ exam_type: this.exam, year, subject, track, mode });
+    this.examMode = (mode === 'random');           // 隨機 = 測驗模式
+    const limit   = this.examMode ? 20 : 9999;     // 測驗一組抽 20 題
+    const params  = new URLSearchParams({ exam_type: this.exam, year, subject, track, mode, limit });
     const r = await fetch(`/api/questions?${params}`);
     this.questions = await r.json();
     if (!this.questions.length) { alert('找不到符合條件的題目'); return; }
-    this.current  = 0;
-    this.answered = {};
+    this.current     = 0;
+    this.answered    = {};   // 練習模式：已揭曉的題
+    this.examChoices = {};   // 測驗模式：暫存選擇（交卷前不揭曉）
     this._showScreen('quiz');
     this._renderQuestion();
   },
@@ -99,7 +109,9 @@ const App = {
     if (!q) return;
 
     document.getElementById('quiz-meta').textContent =
-      `${q.year}年 ${q.subject}${q.track ? ' ' + q.track : ''}`;
+      this.examMode
+        ? `測驗模式　${q.subject}`
+        : `${q.year}年 ${q.subject}${q.track ? ' ' + q.track : ''}`;
     document.getElementById('quiz-progress').textContent =
       `第 ${this.current + 1} / ${this.questions.length} 題`;
     document.getElementById('quiz-question').textContent =
@@ -107,7 +119,8 @@ const App = {
 
     const optsEl = document.getElementById('quiz-options');
     optsEl.innerHTML = '';
-    const prev = this.answered[q.id];
+    const prev   = this.answered[q.id];                 // 練習：已揭曉
+    const chosen = this.examChoices ? this.examChoices[q.id] : undefined;  // 測驗：暫存選擇
 
     [['A', q.opt_a], ['B', q.opt_b], ['C', q.opt_c], ['D', q.opt_d]].forEach(([letter, text]) => {
       const btn = document.createElement('button');
@@ -119,10 +132,14 @@ const App = {
       textSpan.textContent = text;
       btn.appendChild(labelSpan);
       btn.appendChild(textSpan);
-      if (prev) {
+      if (this.examMode) {
+        // 測驗模式：可重複切換選擇，交卷前不顯示對錯
+        if (letter === chosen) btn.classList.add('selected');
+        btn.onclick = () => this._chooseExam(q.id, letter);
+      } else if (prev) {
         btn.disabled = true;
-        if (letter === prev.answer)                    btn.classList.add('correct');
-        if (letter === prev.chosen && !prev.correct)   btn.classList.add('wrong');
+        if (letter === prev.answer)                  btn.classList.add('correct');
+        if (letter === prev.chosen && !prev.correct) btn.classList.add('wrong');
       } else {
         btn.onclick = () => this._submitAnswer(q.id, letter);
       }
@@ -130,7 +147,7 @@ const App = {
     });
 
     const resultEl = document.getElementById('quiz-result');
-    if (prev) {
+    if (!this.examMode && prev) {
       resultEl.className = `result ${prev.correct ? 'correct' : 'wrong'}`;
       resultEl.textContent = prev.correct
         ? '✓ 答對了！'
@@ -149,6 +166,107 @@ const App = {
     document.getElementById('btn-next').onclick   = () => this._goTo(this.current + 1);
     document.getElementById('btn-random').onclick = () => this._goTo(Math.floor(Math.random() * this.questions.length));
     document.getElementById('btn-skip').onclick   = () => this._skipTo();
+
+    // 測驗模式：隱藏「跳題/隨機」，顯示「交卷」與已答進度
+    const examOnly = this.examMode;
+    document.getElementById('btn-skip').style.display   = examOnly ? 'none' : '';
+    document.getElementById('btn-random').style.display = examOnly ? 'none' : '';
+    const finishBtn = document.getElementById('btn-finish');
+    if (examOnly) {
+      const answeredCount = Object.keys(this.examChoices).length;
+      finishBtn.style.display = '';
+      finishBtn.textContent = `交卷（已答 ${answeredCount} / ${this.questions.length}）`;
+    } else {
+      finishBtn.style.display = 'none';
+    }
+  },
+
+  _chooseExam(qid, letter) {
+    this.examChoices[qid] = letter;
+    this._renderQuestion();
+  },
+
+  async _finishExam() {
+    const answeredCount = Object.keys(this.examChoices).length;
+    const unanswered = this.questions.length - answeredCount;
+    if (unanswered > 0 &&
+        !confirm(`還有 ${unanswered} 題未作答，未作答將計為錯誤。確定交卷？`)) {
+      return;
+    }
+    const payload = {
+      answers: this.questions.map(q => ({
+        question_id: q.id, chosen: this.examChoices[q.id] || ''
+      }))
+    };
+    const r = await fetch('/api/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    this._refreshHomeStats();
+    this._showResults(data);
+  },
+
+  _showResults(data) {
+    const pct = data.total ? Math.round(data.score / data.total * 100) : 0;
+    document.getElementById('result-summary').textContent =
+      `得分：${data.score} / ${data.total} （${pct}%）`;
+
+    const byId = {};
+    this.questions.forEach(q => { byId[q.id] = q; });
+
+    const list = document.getElementById('result-list');
+    list.innerHTML = '';
+    data.results.forEach((res, idx) => {
+      const q = byId[res.question_id];
+      if (!q) return;
+      const item = document.createElement('div');
+      item.className = `review-item ${res.correct ? 'correct' : 'wrong'}`;
+
+      const head = document.createElement('div');
+      head.className = 'review-head';
+      const status = res.correct ? '✓ 答對' : (res.chosen ? '✗ 答錯' : '✗ 未作答');
+      head.textContent = `第 ${idx + 1} 題　${status}`;
+      item.appendChild(head);
+
+      const qtext = document.createElement('div');
+      qtext.className = 'review-q';
+      qtext.textContent = `${q.question_no}. ${q.question_text}`;
+      item.appendChild(qtext);
+
+      const opts = document.createElement('div');
+      opts.className = 'review-opts';
+      [['A', q.opt_a], ['B', q.opt_b], ['C', q.opt_c], ['D', q.opt_d]].forEach(([L, t]) => {
+        const o = document.createElement('div');
+        o.className = 'review-opt';
+        const isAns    = res.answer && res.answer.includes(L);
+        const isChosen = res.chosen === L;
+        if (isAns)                    o.classList.add('opt-correct');
+        if (isChosen && !res.correct) o.classList.add('opt-chosen-wrong');
+        let suffix = '';
+        if (isAns)    suffix += '　（正解）';
+        if (isChosen) suffix += '　← 你的答案';
+        o.textContent = `${L}. ${t}${suffix}`;
+        opts.appendChild(o);
+      });
+      item.appendChild(opts);
+
+      const ansLine = document.createElement('div');
+      ansLine.className = 'review-ans';
+      ansLine.textContent =
+        `你的答案：${res.chosen || '（未作答）'}　正解：${res.answer || '（未提供）'}`;
+      item.appendChild(ansLine);
+
+      const exp = document.createElement('div');
+      exp.className = 'review-exp';
+      exp.textContent = `詳解：${res.explanation || '（尚未提供）'}`;
+      item.appendChild(exp);
+
+      list.appendChild(item);
+    });
+
+    this._showScreen('result');
   },
 
   async _submitAnswer(qid, chosen) {
@@ -234,8 +352,10 @@ const App = {
     const r = await fetch(`/api/questions?${params}`);
     this.questions = await r.json();
     const idx = this.questions.findIndex(x => x.id === q.id);
-    this.current  = idx >= 0 ? idx : 0;
-    this.answered = {};
+    this.current     = idx >= 0 ? idx : 0;
+    this.answered    = {};
+    this.examMode    = false;   // 從錯題本進入＝練習模式
+    this.examChoices = {};
     this._showScreen('quiz');
     this._renderQuestion();
   }

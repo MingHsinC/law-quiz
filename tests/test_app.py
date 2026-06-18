@@ -90,3 +90,57 @@ def test_null_answer_question(client):
     r = client.post('/api/attempt', json={'question_id': qid, 'chosen': 'A'})
     data = r.get_json()
     assert data['answer_available'] is False
+
+def test_attempt_returns_explanation_key(client):
+    qid = _insert(client)
+    r = client.post('/api/attempt', json={'question_id': qid, 'chosen': 'C'})
+    assert 'explanation' in r.get_json()
+
+def test_questions_strip_explanation(client):
+    _insert(client)
+    data = client.get('/api/questions?exam_type=silu').get_json()
+    assert 'explanation' not in data[0]
+
+def _insert_many(client, specs):
+    """specs: list of (question_no, answer). 回傳 {question_no: id}。"""
+    for no, ans in specs:
+        db.insert_questions([{
+            'exam_type':'silu','year':108,'subject':'民法','track':'律',
+            'question_no':no,'question_text':f'試題{no}','opt_a':'A','opt_b':'B',
+            'opt_c':'C','opt_d':'D','answer':ans}])
+    return {q['question_no']: q['id'] for q in db.get_questions('silu')}
+
+def test_grade_scores_mixed_answers(client):
+    ids = _insert_many(client, [(1,'C'), (2,'A'), (3,'B')])
+    q1, q2, q3 = ids[1], ids[2], ids[3]
+    payload = {'answers': [
+        {'question_id': q1, 'chosen': 'C'},   # 對
+        {'question_id': q2, 'chosen': 'D'},   # 錯
+        {'question_id': q3, 'chosen': ''},    # 未作答
+    ]}
+    r = client.post('/api/grade', json=payload)
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['total'] == 3
+    assert data['score'] == 1
+    res = {x['question_id']: x for x in data['results']}
+    assert res[q1]['correct'] is True
+    assert res[q2]['correct'] is False and res[q2]['answer'] == 'A'
+    assert res[q3]['chosen'] == '' and res[q3]['answer'] == 'B'
+
+def test_grade_records_attempts_only_for_answered(client):
+    ids = _insert_many(client, [(1,'C'), (2,'A')])
+    q1, q2 = ids[1], ids[2]
+    client.post('/api/grade', json={'answers': [
+        {'question_id': q1, 'chosen': 'C'},
+        {'question_id': q2, 'chosen': ''},   # 未作答 → 不記錄
+    ]})
+    stats = client.get('/api/stats').get_json()
+    assert stats['overall']['total'] == 1   # 只有 q1 被記錄
+
+def test_grade_multi_answer_accepts_either(client):
+    qid = _insert(client, answer='CD')   # 送分題
+    data = client.post('/api/grade', json={
+        'answers': [{'question_id': qid, 'chosen': 'D'}]
+    }).get_json()
+    assert data['results'][0]['correct'] is True

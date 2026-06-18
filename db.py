@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS questions (
   opt_c         TEXT NOT NULL,
   opt_d         TEXT NOT NULL,
   answer        TEXT,
+  explanation   TEXT,
   UNIQUE(exam_type, year, subject, track, question_no)
 );
 CREATE TABLE IF NOT EXISTS attempts (
@@ -46,6 +47,10 @@ def get_conn():
 def init_db():
     with get_conn() as conn:
         conn.executescript(_SCHEMA)
+        # 既有資料庫遷移：補上 explanation 欄位（CREATE IF NOT EXISTS 不會新增欄位）
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(questions)").fetchall()]
+        if 'explanation' not in cols:
+            conn.execute("ALTER TABLE questions ADD COLUMN explanation TEXT")
 
 def insert_questions(questions: list[dict]) -> int:
     with get_conn() as conn:

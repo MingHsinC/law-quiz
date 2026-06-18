@@ -27,6 +27,7 @@ def api_questions():
     for q in questions:
         q['bookmarked'] = q['id'] in bookmarked
         q.pop('answer', None)
+        q.pop('explanation', None)
     return jsonify(questions)
 
 @app.route('/api/question/<int:qid>')
@@ -35,6 +36,7 @@ def api_question(qid):
     if not q:
         return jsonify({'error': 'not found'}), 404
     q.pop('answer', None)
+    q.pop('explanation', None)
     q['bookmarked'] = qid in db.get_bookmarked_ids()
     return jsonify(q)
 
@@ -53,7 +55,38 @@ def api_attempt():
     is_correct = (chosen in answer) if answer else False
     db.record_attempt(qid, chosen, is_correct)
     return jsonify({'correct': is_correct, 'answer': answer,
-                    'answer_available': answer is not None})
+                    'answer_available': answer is not None,
+                    'explanation': q.get('explanation')})
+
+@app.route('/api/grade', methods=['POST'])
+def api_grade():
+    """測驗模式交卷：一次評分整組答案。
+    已作答題目記錄 attempt；未作答題目只回傳正解，不記錄。"""
+    data    = request.get_json() or {}
+    answers = data.get('answers', [])
+    results = []
+    for item in answers:
+        qid = item.get('question_id')
+        q   = db.get_question(qid)
+        if not q:
+            continue
+        chosen = str(item.get('chosen', '')).upper()
+        ans    = q['answer']
+        if chosen in ('A', 'B', 'C', 'D'):
+            is_correct = (chosen in ans) if ans else False
+            db.record_attempt(qid, chosen, is_correct)
+        else:
+            chosen, is_correct = '', False
+        results.append({
+            'question_id':      qid,
+            'chosen':           chosen,
+            'correct':          is_correct,
+            'answer':           ans,
+            'answer_available': ans is not None,
+            'explanation':      q.get('explanation'),
+        })
+    score = sum(1 for r in results if r['correct'])
+    return jsonify({'score': score, 'total': len(results), 'results': results})
 
 @app.route('/api/stats')
 def api_stats():

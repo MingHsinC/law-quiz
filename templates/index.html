@@ -36,8 +36,8 @@
       <div class="filter-row">
         <span class="filter-label">模式</span>
         <div class="radio-group">
-          <label><input type="radio" name="mode" value="sequential" checked>順序</label>
-          <label><input type="radio" name="mode" value="random">隨機</label>
+          <label><input type="radio" name="mode" value="sequential" checked>順序練習</label>
+          <label><input type="radio" name="mode" value="random">隨機測驗（20題）</label>
           <label><input type="radio" name="mode" value="wrong">只練錯題</label>
         </div>
       </div>
@@ -61,6 +61,18 @@
       <button id="btn-random" class="btn-nav">隨機</button>
       <button id="btn-next"   class="btn-nav">下一題</button>
       <button id="btn-bookmark" class="btn-bookmark" title="書籤">☆</button>
+    </div>
+    <button id="btn-finish" class="btn-primary" style="display:none">交卷</button>
+  </main>
+
+  <!-- Screen: Result (測驗結果) -->
+  <main id="screen-result" class="screen">
+    <h2>測驗結果</h2>
+    <p id="result-summary" class="stats-overall"></p>
+    <div id="result-list" class="review-list"></div>
+    <div class="result-actions">
+      <button id="btn-redo"  class="btn-nav">再做一組</button>
+      <button id="btn-home-from-result" class="btn-nav">回首頁</button>
     </div>
   </main>
 
