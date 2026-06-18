@@ -80,7 +80,7 @@ const App = {
   async _startQuiz() {
     const year    = document.getElementById('filter-year').value;
     const subject = document.getElementById('filter-subject').value;
-    const track   = document.getElementById('filter-track').value;
+    const track   = this.exam === 'silu' ? document.getElementById('filter-track').value : '';
     const mode    = document.querySelector('input[name="mode"]:checked').value;
     const params  = new URLSearchParams({ exam_type: this.exam, year, subject, track, mode });
     const r = await fetch(`/api/questions?${params}`);
