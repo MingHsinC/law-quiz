@@ -49,7 +49,7 @@ def init_db():
 
 def insert_questions(questions: list[dict]) -> int:
     with get_conn() as conn:
-        conn.executemany("""
+        cur = conn.executemany("""
             INSERT OR IGNORE INTO questions
               (exam_type,year,subject,track,question_no,
                question_text,opt_a,opt_b,opt_c,opt_d,answer)
@@ -57,7 +57,7 @@ def insert_questions(questions: list[dict]) -> int:
               (:exam_type,:year,:subject,:track,:question_no,
                :question_text,:opt_a,:opt_b,:opt_c,:opt_d,:answer)
         """, questions)
-    return len(questions)
+    return cur.rowcount
 
 def get_questions(exam_type: str, year: int = 0, subject: str = '',
                   track: str = '', mode: str = 'sequential',
@@ -99,18 +99,17 @@ def record_attempt(question_id: int, chosen: str, is_correct: bool) -> None:
         )
 
 def toggle_bookmark(question_id: int) -> bool:
+    now = datetime.now(timezone.utc).isoformat()
     with get_conn() as conn:
-        exists = conn.execute(
-            'SELECT 1 FROM bookmarks WHERE question_id=?', (question_id,)
-        ).fetchone()
-        if exists:
-            conn.execute('DELETE FROM bookmarks WHERE question_id=?', (question_id,))
-            return False
-        conn.execute(
-            'INSERT INTO bookmarks(question_id,created_at) VALUES(?,?)',
-            (question_id, datetime.now(timezone.utc).isoformat())
+        cur = conn.execute(
+            'INSERT OR IGNORE INTO bookmarks(question_id, created_at) VALUES(?, ?)',
+            (question_id, now)
         )
-        return True
+        if cur.rowcount == 1:
+            return True   # inserted — bookmark added
+        # Already existed — remove it
+        conn.execute('DELETE FROM bookmarks WHERE question_id=?', (question_id,))
+        return False
 
 def get_stats() -> dict:
     with get_conn() as conn:
