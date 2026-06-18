@@ -1,1 +1,84 @@
-<!DOCTYPE html><html><body>placeholder</body></html>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>法律刷題</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>法律刷題</h1>
+    <nav>
+      <button id="nav-home"  class="nav-btn active">首頁</button>
+      <button id="nav-stats" class="nav-btn">統計 / 錯題</button>
+    </nav>
+  </header>
+
+  <!-- Screen: Home -->
+  <main id="screen-home" class="screen active">
+    <div class="exam-tabs">
+      <button class="tab-btn active" data-exam="silu">司律一試</button>
+      <button class="tab-btn" data-exam="investigation">調查局特考</button>
+    </div>
+    <div class="filters card">
+      <div class="filter-row">
+        <label>年份<select id="filter-year"><option value="0">全部</option></select></label>
+        <label>科目<select id="filter-subject"><option value="">全部</option></select></label>
+        <label id="track-label">組別
+          <select id="filter-track">
+            <option value="">全部</option>
+            <option value="司">司法官</option>
+            <option value="律">律師</option>
+          </select>
+        </label>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label">模式</span>
+        <div class="radio-group">
+          <label><input type="radio" name="mode" value="sequential" checked>順序</label>
+          <label><input type="radio" name="mode" value="random">隨機</label>
+          <label><input type="radio" name="mode" value="wrong">只練錯題</label>
+        </div>
+      </div>
+    </div>
+    <p id="home-stats" class="home-stats">載入中...</p>
+    <button id="btn-start" class="btn-primary">開始練習</button>
+  </main>
+
+  <!-- Screen: Quiz -->
+  <main id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <span id="quiz-meta"></span>
+      <span id="quiz-progress"></span>
+    </div>
+    <div id="quiz-question" class="question-text"></div>
+    <div id="quiz-options"  class="options-list"></div>
+    <div id="quiz-result"   class="result" style="display:none"></div>
+    <div class="quiz-nav">
+      <button id="btn-prev"   class="btn-nav">上一題</button>
+      <button id="btn-skip"   class="btn-nav">跳題</button>
+      <button id="btn-random" class="btn-nav">隨機</button>
+      <button id="btn-next"   class="btn-nav">下一題</button>
+      <button id="btn-bookmark" class="btn-bookmark" title="書籤">☆</button>
+    </div>
+  </main>
+
+  <!-- Screen: Stats -->
+  <main id="screen-stats" class="screen">
+    <h2>整體統計</h2>
+    <p id="stats-overall" class="stats-overall"></p>
+    <h2>各科答對率</h2>
+    <div class="table-wrap">
+      <table id="stats-table" class="stats-table">
+        <thead><tr><th>考試</th><th>科目</th><th>答題數</th><th>答對率</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <h2>錯題本</h2>
+    <div id="wrong-list" class="wrong-list"></div>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
