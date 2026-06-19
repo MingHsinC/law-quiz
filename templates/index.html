@@ -29,9 +29,9 @@
           <label><input type="radio" name="mode" value="random">隨機模式</label>
         </div>
       </div>
-      <div class="filter-row" id="paper-filters">
-        <label>年份<select id="filter-year"></select></label>
-        <label>科目<select id="filter-subject"></select></label>
+      <div class="filter-row">
+        <label class="filter-field" id="year-field">年份<select id="filter-year"></select></label>
+        <label class="filter-field" id="subject-field">科目<select id="filter-subject"></select></label>
       </div>
       <p id="mode-hint" class="mode-hint"></p>
     </div>
@@ -54,6 +54,12 @@
       <button id="btn-random" class="btn-nav">隨機</button>
       <button id="btn-next"   class="btn-nav">下一題</button>
       <button id="btn-bookmark" class="btn-bookmark" title="書籤">☆</button>
+    </div>
+    <div id="quiz-grid-wrap" class="quiz-grid-wrap" style="display:none">
+      <div class="grid-legend">
+        點數字可跳題　·　<span class="lg-ans"></span>已作答　<span class="lg-no"></span>未作答
+      </div>
+      <div id="quiz-grid" class="quiz-grid"></div>
     </div>
     <button id="btn-finish" class="btn-primary" style="display:none">交卷</button>
   </main>

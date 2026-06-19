@@ -53,10 +53,12 @@ const App = {
 
   _applyModeUI() {
     const mode = this._currentMode();
-    document.getElementById('paper-filters').style.display = mode === 'paper' ? '' : 'none';
+    // 年份只在考卷模式出現；科目兩種模式都可選
+    document.getElementById('year-field').style.display = mode === 'paper' ? '' : 'none';
     document.getElementById('mode-hint').textContent = mode === 'paper'
       ? '照當年度該科目，整張考卷作答；交卷後檢討。'
-      : '從全部題庫隨機抽 20 題；交卷後檢討。';
+      : '隨機抽 20 題；科目可選特定一科或「全部科目」；交卷後檢討。';
+    this._populateSubjects();
   },
 
   _bindExam() {
@@ -82,12 +84,21 @@ const App = {
   },
 
   _populateSubjects() {
-    const f = (this._filters || {})[this.exam] || { subjects_by_year: {} };
-    const year = document.getElementById('filter-year').value;
-    const subs = (f.subjects_by_year || {})[year] || [];
+    const mode = this._currentMode();
+    const f = (this._filters || {})[this.exam] || { subjects: [], subjects_by_year: {} };
     const sel = document.getElementById('filter-subject');
     sel.innerHTML = '';
-    subs.forEach(s => sel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+    if (mode === 'random') {
+      // 隨機模式：全部科目（跨年份）＋「全部」選項
+      sel.insertAdjacentHTML('beforeend', '<option value="">全部科目</option>');
+      (f.subjects || []).forEach(s =>
+        sel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+    } else {
+      // 考卷模式：只列該年份的科目
+      const year = document.getElementById('filter-year').value;
+      (f.subjects_by_year || {})[year]?.forEach(s =>
+        sel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+    }
   },
 
   async _refreshHomeStats() {
@@ -113,8 +124,11 @@ const App = {
       params = new URLSearchParams({
         exam_type: this.exam, year, subject, mode: 'sequential', limit: 9999 });
     } else {
-      // 隨機模式：不選年份科目，從全題庫抽 20 題
-      params = new URLSearchParams({ exam_type: this.exam, mode: 'random', limit: 20 });
+      // 隨機模式：抽 20 題；可選特定科目（空=全部）
+      const subject = document.getElementById('filter-subject').value;
+      const p = { exam_type: this.exam, mode: 'random', limit: 20 };
+      if (subject) p.subject = subject;
+      params = new URLSearchParams(p);
     }
     const r = await fetch(`/api/questions?${params}`);
     this.questions = await r.json();
@@ -201,6 +215,26 @@ const App = {
     } else {
       finishBtn.style.display = 'none';
     }
+
+    this._renderGrid();
+  },
+
+  // 題號導覽格：藍=已答、白=未答、紅框=目前題；點擊跳題
+  _renderGrid() {
+    const wrap = document.getElementById('quiz-grid-wrap');
+    if (!this.examMode) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    const grid = document.getElementById('quiz-grid');
+    grid.innerHTML = '';
+    this.questions.forEach((q, idx) => {
+      const cell = document.createElement('button');
+      cell.className = 'grid-cell';
+      cell.textContent = idx + 1;
+      if (this.examChoices[q.id]) cell.classList.add('answered');
+      if (idx === this.current)   cell.classList.add('current');
+      cell.onclick = () => this._goTo(idx);
+      grid.appendChild(cell);
+    });
   },
 
   _chooseExam(qid, letter) {
