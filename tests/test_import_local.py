@@ -1,4 +1,7 @@
-from import_local import parse_local_filename, split_stem_options
+from import_local import (
+    parse_local_filename, split_stem_options,
+    parse_explanation_file, explanation_filename_meta,
+)
 
 
 def test_filename_with_track():
@@ -46,3 +49,24 @@ def test_split_options_tab_separated():
 
 def test_split_returns_none_when_incomplete():
     assert split_stem_options('只有三個選項？\nA甲\nB乙\nC丙') is None
+
+def test_explanation_filename_meta():
+    assert explanation_filename_meta('110綜合法學(一)(刑法)_詳解.txt') == (110, '綜合法學(一)(刑法)')
+
+def test_explanation_filename_meta_non_match():
+    assert explanation_filename_meta('110綜合法學(一)(刑法).txt') is None
+
+def test_parse_explanation_file():
+    text = (
+        '前言略\n'
+        '【第1題】\n下列何者正確？\n(A)甲\n(B)乙\n\n答：B\n\n'
+        'A 錯，理由甲。\nB 對，理由乙。\n\n'
+        '【第2題】\n另一題？\n(A)丙\n(B)丁\n\n答：A\n本題概念：測試\n\nA 對。\n'
+    )
+    out = parse_explanation_file(text)
+    assert set(out) == {1, 2}
+    assert out[1].startswith('答：B')
+    assert 'A 錯，理由甲' in out[1]
+    assert '下列何者正確' not in out[1]   # 題目重述已去除
+    assert out[2].startswith('答：A')
+    assert '本題概念：測試' in out[2]

@@ -18,9 +18,12 @@ CREATE TABLE IF NOT EXISTS questions (
   opt_c         TEXT NOT NULL,
   opt_d         TEXT NOT NULL,
   answer        TEXT,
-  explanation   TEXT,
-  UNIQUE(exam_type, year, subject, track, question_no)
+  explanation   TEXT
 );
+-- track 可能為 NULL（103 年起無司/律之分）；SQLite 的 UNIQUE 視 NULL 為相異，
+-- 故改用 COALESCE 索引，讓 NULL 與 '' 視同一值，確保重複匯入不會產生重複題目。
+CREATE UNIQUE INDEX IF NOT EXISTS ux_question
+  ON questions(exam_type, year, subject, COALESCE(track, ''), question_no);
 CREATE TABLE IF NOT EXISTS attempts (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   question_id INTEGER NOT NULL REFERENCES questions(id),
@@ -70,6 +73,17 @@ def set_explanation(question_id: int, explanation: str) -> None:
     with get_conn() as conn:
         conn.execute('UPDATE questions SET explanation=? WHERE id=?',
                      (explanation, question_id))
+
+def set_explanation_by_key(exam_type: str, year: int, subject: str,
+                           question_no: int, explanation: str) -> int:
+    """依 (考試,年份,科目,題號) 更新詳解，回傳更新筆數。
+    註：100–102 年同題號有司/律兩卷，會一併更新（該年詳解兩卷通用時適用）。"""
+    with get_conn() as conn:
+        cur = conn.execute(
+            'UPDATE questions SET explanation=? '
+            'WHERE exam_type=? AND year=? AND subject=? AND question_no=?',
+            (explanation, exam_type, year, subject, question_no))
+    return cur.rowcount
 
 def get_questions(exam_type: str, year: int = 0, subject: str = '',
                   track: str = '', mode: str = 'sequential',

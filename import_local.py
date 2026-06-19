@@ -201,6 +201,56 @@ def import_113(path: Path) -> list[dict]:
     return records
 
 
+# ─────────────────────────── 詳解 txt（topic/詳解/<年>/） ───────────────────────────
+
+def parse_explanation_file(text: str) -> dict[int, str]:
+    """把詳解檔拆成 {題號: 詳解}。
+    每題以「【第N題】」分隔；詳解取「答：」起的內容（去掉重述的題目與選項）。"""
+    out: dict[int, str] = {}
+    parts = re.split(r'【第\s*(\d+)\s*題】', text)
+    # parts = [前言, '1', body1, '2', body2, ...]
+    for i in range(1, len(parts), 2):
+        no = int(parts[i])
+        body = parts[i + 1] if i + 1 < len(parts) else ''
+        m = re.search(r'答\s*[：:]', body)
+        expl = (body[m.start():] if m else body).strip()
+        if expl:
+            out[no] = expl
+    return out
+
+
+def explanation_filename_meta(fname: str) -> tuple[int, str] | None:
+    """'110綜合法學(一)(刑法…)_詳解.txt' → (110, '綜合法學(一)(刑法…)')"""
+    m = re.match(r'^(\d+)(.+?)_詳解\.txt$', fname)
+    if not m:
+        return None
+    return int(m.group(1)), m.group(2)
+
+
+def import_explanations() -> int:
+    root = TOPIC / '詳解'
+    if not root.is_dir():
+        print('  （無 topic/詳解/ 目錄，略過）')
+        return 0
+    total = 0
+    for ydir in sorted(root.iterdir()):
+        if not ydir.is_dir():
+            continue
+        for f in sorted(ydir.glob('*.txt')):
+            meta = explanation_filename_meta(f.name)
+            if not meta:
+                continue
+            year, subject = meta
+            expls = parse_explanation_file(f.read_text(encoding='utf-8'))
+            applied = sum(
+                db.set_explanation_by_key('silu', year, subject, no, expl)
+                for no, expl in expls.items()
+            )
+            print(f'  ✓ {year} {subject}：套用 {applied}/{len(expls)} 題')
+            total += applied
+    return total
+
+
 # ─────────────────────────── 主流程 ───────────────────────────
 
 def main():
@@ -222,7 +272,11 @@ def main():
     have_exp = sum(1 for r in recs if r['explanation'])
     print(f'  解析題數：{len(recs)}，新寫入：{inserted}')
     print(f'  有答案：{have_ans}（{round(have_ans / len(recs) * 100)}%）')
-    print(f'  有詳解：{have_exp}')
+    print(f'  內嵌詳解（xlsx）：{have_exp}')
+
+    print('\n【套用詳解 txt（topic/詳解/）】')
+    applied = import_explanations()
+    print(f'  共套用 {applied} 題詳解')
     years = db.get_filters()['silu']['years']
     print(f'  題庫年份：{years}')
     print('\n✓ 完成，執行 python app.py 開始刷題')
