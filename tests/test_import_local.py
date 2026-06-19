@@ -1,7 +1,23 @@
 from import_local import (
     parse_local_filename, split_stem_options,
     parse_explanation_file, explanation_filename_meta, parse_solution_file,
+    canonical_subject,
 )
+
+
+def test_canonical_subject_114_short_names():
+    assert canonical_subject('刑法') == '綜合法學(一)(刑法、刑事訴訟法、法律倫理)'
+    assert canonical_subject('憲法') == '綜合法學(一)(憲法、行政法、國際公法、國際私法)'
+    assert canonical_subject('民法') == '綜合法學(二)(民法、民事訴訟法)'
+    assert canonical_subject('商法') == '綜合法學(二)(公司法、保險法、票據法、證券交易法、強制執行法、法學英文)'
+
+def test_canonical_subject_113_sheet_names():
+    assert canonical_subject('綜合法學（刑法、刑事訴訟法、法律倫理）') == '綜合法學(一)(刑法、刑事訴訟法、法律倫理)'
+    assert canonical_subject('綜合法學（公司法、保險法、票據法..)') == '綜合法學(二)(公司法、保險法、票據法、證券交易法、強制執行法、法學英文)'
+
+def test_canonical_subject_already_canonical():
+    s = '綜合法學(二)(民法、民事訴訟法)'
+    assert canonical_subject(s) == s
 
 
 def test_filename_with_track():

@@ -22,6 +22,28 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
 
 TOPIC = Path(__file__).parent / 'topic'
 
+# 113/114 來源的科目命名與 100–112 不一致，統一對應到 103–112 的正規名稱
+_CANON_SUBJECTS = {
+    '刑': '綜合法學(一)(刑法、刑事訴訟法、法律倫理)',
+    '憲': '綜合法學(一)(憲法、行政法、國際公法、國際私法)',
+    '商': '綜合法學(二)(公司法、保險法、票據法、證券交易法、強制執行法、法學英文)',
+    '民': '綜合法學(二)(民法、民事訴訟法)',
+}
+
+
+def canonical_subject(raw: str) -> str:
+    """把 113/114 的科目名稱（如 '刑法'、'綜合法學（公司法…)'）統一成 100–112 正規名稱。
+    對應不到時原樣回傳。"""
+    if '公司法' in raw or '商' in raw:
+        return _CANON_SUBJECTS['商']
+    if '憲' in raw:
+        return _CANON_SUBJECTS['憲']
+    if '民法' in raw or '民事' in raw:
+        return _CANON_SUBJECTS['民']
+    if '刑' in raw:
+        return _CANON_SUBJECTS['刑']
+    return raw
+
 
 # ─────────────────────────── 100–111 年 txt ───────────────────────────
 
@@ -153,7 +175,8 @@ def import_114(path: Path) -> list[dict]:
             continue
         stem, opts = parsed
         records.append({
-            'exam_type': 'silu', 'year': 114, 'subject': str(subject), 'track': None,
+            'exam_type': 'silu', 'year': 114, 'subject': canonical_subject(str(subject)),
+            'track': None,
             'question_no': int(no), 'question_text': stem,
             'opt_a': opts['A'], 'opt_b': opts['B'], 'opt_c': opts['C'], 'opt_d': opts['D'],
             'answer': answer, 'explanation': str(exp).strip() if exp else None,
@@ -189,7 +212,8 @@ def import_113(path: Path) -> list[dict]:
             if ans and not re.fullmatch(r'[A-D]+', ans):
                 ans = None
             records.append({
-                'exam_type': 'silu', 'year': 113, 'subject': sn, 'track': None,
+                'exam_type': 'silu', 'year': 113, 'subject': canonical_subject(sn),
+                'track': None,
                 'question_no': no, 'question_text': stem,
                 'opt_a': opts['A'], 'opt_b': opts['B'], 'opt_c': opts['C'], 'opt_d': opts['D'],
                 'answer': ans, 'explanation': str(exp).strip() if exp else None,
