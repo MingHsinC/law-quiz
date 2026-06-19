@@ -1,0 +1,67 @@
+	.navbar-expand-lg{
+		background-color: #6f42c1; 
+	}	
+	.navbar-brand {
+		width: 260px;
+		overflow:hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+		
+	#qa-quiz, #qa-answer, #qa-result{
+		word-wrap: break-word; 
+		white-space: pre-wrap; 
+		text-align: justify; 
+		text-justify:inter-ideograph;
+	}
+	
+	.btn-primary {
+    		background-color: #6f42c1 !important;
+		border-color:gray !important;
+	}
+	
+	.nav>li>a {
+   	 	
+    		font-size: 16px !important;
+	}
+	.container{
+		padding-top: 10px;
+	}
+	
+	/*分子分母顯示*/
+	.frac {
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;
+    letter-spacing: 0.001em;
+    text-align: center;
+	}
+	.frac > span {
+		display: block;	
+	}
+	.frac span.bottom {
+		border-top: thin solid black;
+	}
+	.frac span.symbol {
+		display: none;
+	} 
+	
+	.percent{
+		text-align:right;
+		width:40px;
+	}
+	
+	#qa-answer{
+		font-size: 28px;
+	}
+	
+	.progress{
+		margin-top: 8px;
+		height: 20px;
+		background-color: gray !important;
+		color: white !important;
+	}
+
+	.github-fork-ribbon:before {
+		background-color: #6f42c1; 
+	}

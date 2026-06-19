@@ -53,16 +53,23 @@ def init_db():
             conn.execute("ALTER TABLE questions ADD COLUMN explanation TEXT")
 
 def insert_questions(questions: list[dict]) -> int:
+    # explanation 為選填欄位，未提供者預設 None
+    rows = [{**q, 'explanation': q.get('explanation')} for q in questions]
     with get_conn() as conn:
         cur = conn.executemany("""
             INSERT OR IGNORE INTO questions
               (exam_type,year,subject,track,question_no,
-               question_text,opt_a,opt_b,opt_c,opt_d,answer)
+               question_text,opt_a,opt_b,opt_c,opt_d,answer,explanation)
             VALUES
               (:exam_type,:year,:subject,:track,:question_no,
-               :question_text,:opt_a,:opt_b,:opt_c,:opt_d,:answer)
-        """, questions)
+               :question_text,:opt_a,:opt_b,:opt_c,:opt_d,:answer,:explanation)
+        """, rows)
     return cur.rowcount
+
+def set_explanation(question_id: int, explanation: str) -> None:
+    with get_conn() as conn:
+        conn.execute('UPDATE questions SET explanation=? WHERE id=?',
+                     (explanation, question_id))
 
 def get_questions(exam_type: str, year: int = 0, subject: str = '',
                   track: str = '', mode: str = 'sequential',

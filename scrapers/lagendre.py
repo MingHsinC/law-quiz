@@ -43,10 +43,17 @@ def _extract_options(block: str) -> dict[str, str] | None:
     return None
 
 def _is_question_start(line: str) -> "re.Match | None":
-    """題目行：數字+空白+內容，且非『100年…』之類標題行。"""
+    """題目行：題號+題幹。
+    同時支援 `1 甲為…`（有空格）與 `1下列…`（無空格，109 年起）兩種格式；
+    並過濾『109年…』標題與『1301頁次』等無中文的頁碼/代號行。"""
     if re.match(r'^\d+\s*年', line):
         return None
-    return re.match(r'^(\d+)[\.\s、]\s*(\S.*)', line)
+    m = re.match(r'^(\d{1,3})[\.\s、]?\s*(\D.*)$', line)
+    if not m:
+        return None
+    if not re.search(r'[一-鿿]', m.group(2)):  # 題幹必含中文
+        return None
+    return m
 
 def parse_questions(text: str) -> list[dict]:
     """Parse question file → list of {no, text, A, B, C, D}.
