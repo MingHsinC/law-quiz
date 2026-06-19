@@ -1,0 +1,122 @@
+:root {
+  --primary: #1a73e8;
+  --primary-dark: #1557b0;
+  --correct: #34a853;
+  --wrong: #ea4335;
+  --bg: #f8f9fa;
+  --card: #ffffff;
+  --text: #202124;
+  --muted: #5f6368;
+  --border: #dadce0;
+  --radius: 8px;
+  --touch: 48px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.6; }
+
+/* Header */
+header { background: var(--primary); color: #fff; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
+header h1 { font-size: 1.1rem; }
+nav { display: flex; gap: 4px; }
+.nav-btn { background: transparent; color: rgba(255,255,255,.75); border: none; padding: 8px 12px; border-radius: var(--radius); cursor: pointer; font-size: .9rem; min-height: var(--touch); }
+.nav-btn.active, .nav-btn:hover { color: #fff; background: rgba(255,255,255,.2); }
+
+/* Screens */
+.screen { display: none; padding: 16px; max-width: 720px; margin: 0 auto; }
+.screen.active { display: block; }
+
+/* Home */
+.exam-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.tab-btn { flex: 1; padding: 10px; border: 2px solid var(--border); border-radius: var(--radius); background: #fff; cursor: pointer; font-size: 1rem; min-height: var(--touch); transition: border-color .15s; }
+.tab-btn.active { border-color: var(--primary); color: var(--primary); font-weight: 600; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.filters { }
+.filter-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; }
+.filter-row:last-child { margin-bottom: 0; }
+.filter-row label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; color: var(--muted); }
+.filter-label { font-size: .85rem; color: var(--muted); }
+/* 科目名稱很長：欄位各自佔整行，下拉滿版並以 ... 截斷，避免手機爆版 */
+.filter-field { flex: 1 1 100%; min-width: 0; }
+.filter-field select { width: 100%; }
+select { border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-size: 1rem; background: #fff; min-height: var(--touch); min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.radio-group { display: flex; flex-wrap: wrap; gap: 10px; }
+.radio-group label { flex-direction: row; align-items: center; gap: 6px; font-size: 1rem; color: var(--text); cursor: pointer; min-height: var(--touch); }
+
+.mode-hint { font-size: .85rem; color: var(--muted); margin-top: 4px; }
+.home-stats { text-align: center; color: var(--muted); margin-bottom: 12px; }
+.btn-primary { display: block; width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius); font-size: 1.1rem; cursor: pointer; min-height: var(--touch); }
+.btn-primary:hover { background: var(--primary-dark); }
+
+/* Quiz */
+.quiz-header { display: flex; justify-content: space-between; font-size: .85rem; color: var(--muted); margin-bottom: 10px; }
+.question-text { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; white-space: pre-wrap; word-break: break-word; }
+.options-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.option-btn { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: var(--card); border: 2px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 1rem; text-align: left; min-height: var(--touch); word-break: break-word; width: 100%; transition: border-color .15s; }
+.option-btn:hover:not(:disabled) { border-color: var(--primary); }
+.option-btn.correct { border-color: var(--correct); background: #e6f4ea; }
+.option-btn.wrong   { border-color: var(--wrong);   background: #fce8e6; }
+.option-btn:disabled { cursor: default; }
+.opt-label { font-weight: 700; min-width: 20px; }
+
+.result { border-radius: var(--radius); padding: 12px 14px; margin-bottom: 12px; font-size: 1rem; }
+.result.correct { border: 1px solid var(--correct); background: #e6f4ea; color: #137333; }
+.result.wrong   { border: 1px solid var(--wrong);   background: #fce8e6; color: #c5221f; }
+
+.quiz-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn-nav { flex: 1; padding: 10px 6px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; cursor: pointer; font-size: .9rem; min-height: var(--touch); min-width: 56px; }
+.btn-nav:hover { background: var(--bg); }
+.btn-bookmark { padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; cursor: pointer; font-size: 1.3rem; min-height: var(--touch); line-height: 1; }
+.btn-bookmark.active { color: #f4b400; }
+#btn-finish { margin-top: 12px; }
+
+/* 題號導覽格 */
+.quiz-grid-wrap { margin: 4px 0 12px; }
+.grid-legend { font-size: .78rem; color: var(--muted); margin-bottom: 6px; }
+.lg-ans, .lg-no { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin-right: 2px; border: 1px solid var(--border); }
+.lg-ans { background: var(--primary); border-color: var(--primary); }
+.lg-no { background: #fff; }
+.quiz-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.grid-cell { width: 38px; height: 38px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text); cursor: pointer; font-size: .85rem; line-height: 1; }
+.grid-cell.answered { background: var(--primary); border-color: var(--primary); color: #fff; }
+.grid-cell.current { outline: 2px solid var(--wrong); outline-offset: 1px; font-weight: 700; }
+
+/* 測驗模式：選項作答中（尚未交卷）的選取狀態 */
+.option-btn.selected { border-color: var(--primary); background: #e8f0fe; }
+
+/* 測驗結果 review */
+.review-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.review-item { border: 1px solid var(--border); border-left-width: 5px; border-radius: var(--radius); padding: 12px; background: var(--card); }
+.review-item.correct { border-left-color: var(--correct); }
+.review-item.wrong   { border-left-color: var(--wrong); }
+.review-head { font-weight: 700; margin-bottom: 6px; }
+.review-item.correct .review-head { color: #137333; }
+.review-item.wrong   .review-head { color: #c5221f; }
+.review-q { margin-bottom: 8px; white-space: pre-wrap; word-break: break-word; }
+.review-opts { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.review-opt { padding: 6px 8px; border-radius: 4px; font-size: .95rem; word-break: break-word; }
+.review-opt.opt-correct { background: #e6f4ea; color: #137333; font-weight: 600; }
+.review-opt.opt-chosen-wrong { background: #fce8e6; color: #c5221f; }
+.review-ans { font-size: .9rem; color: var(--muted); margin-bottom: 6px; }
+.review-exp { font-size: .9rem; background: var(--bg); border-radius: 4px; padding: 8px; white-space: pre-wrap; word-break: break-word; }
+.result-actions { display: flex; gap: 8px; }
+
+/* Stats */
+h2 { font-size: 1rem; color: var(--muted); margin: 16px 0 8px; text-transform: uppercase; letter-spacing: .05em; }
+.stats-overall { font-size: 1.4rem; text-align: center; margin-bottom: 8px; }
+.table-wrap { overflow-x: auto; }
+.stats-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: .95rem; }
+.stats-table th, .stats-table td { padding: 10px 12px; border: 1px solid var(--border); text-align: left; }
+.stats-table th { background: var(--bg); font-weight: 600; }
+.wrong-list { display: flex; flex-direction: column; gap: 8px; }
+.wrong-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; }
+.wrong-item:hover { border-color: var(--primary); }
+.wrong-meta { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
+.wrong-text { font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.no-data { color: var(--muted); font-size: .95rem; }
+
+/* 備份 / 還原 */
+.backup-hint { font-size: .85rem; color: var(--muted); margin-bottom: 8px; }
+.backup-actions { display: flex; gap: 8px; }
+/* iOS 安全區域（瀏海/底部）內距 */
+body { padding-bottom: env(safe-area-inset-bottom); }

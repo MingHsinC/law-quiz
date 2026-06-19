@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>法律刷題</title>
+  <meta name="theme-color" content="#1f6feb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="法律刷題">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>法律刷題</h1>
+    <nav>
+      <button id="nav-home"  class="nav-btn active">首頁</button>
+      <button id="nav-stats" class="nav-btn">統計 / 錯題</button>
+    </nav>
+  </header>
+
+  <!-- Screen: Home -->
+  <main id="screen-home" class="screen active">
+    <div class="exam-tabs">
+      <button class="tab-btn active" data-exam="silu">司律一試</button>
+      <button class="tab-btn" data-exam="investigation">調查局特考</button>
+    </div>
+    <div class="filters card">
+      <div class="filter-row">
+        <span class="filter-label">模式</span>
+        <div class="radio-group">
+          <label><input type="radio" name="mode" value="paper" checked>考卷模式</label>
+          <label><input type="radio" name="mode" value="random">隨機模式</label>
+        </div>
+      </div>
+      <div class="filter-row">
+        <label class="filter-field" id="year-field">年份<select id="filter-year"></select></label>
+        <label class="filter-field" id="subject-field">科目<select id="filter-subject"></select></label>
+      </div>
+      <p id="mode-hint" class="mode-hint"></p>
+    </div>
+    <p id="home-stats" class="home-stats">載入中...</p>
+    <button id="btn-start" class="btn-primary">開始測驗</button>
+  </main>
+
+  <!-- Screen: Quiz -->
+  <main id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <span id="quiz-meta"></span>
+      <span id="quiz-progress"></span>
+    </div>
+    <div id="quiz-question" class="question-text"></div>
+    <div id="quiz-options"  class="options-list"></div>
+    <div id="quiz-result"   class="result" style="display:none"></div>
+    <div class="quiz-nav">
+      <button id="btn-prev"   class="btn-nav">上一題</button>
+      <button id="btn-skip"   class="btn-nav">跳題</button>
+      <button id="btn-random" class="btn-nav">隨機</button>
+      <button id="btn-next"   class="btn-nav">下一題</button>
+      <button id="btn-bookmark" class="btn-bookmark" title="書籤">☆</button>
+    </div>
+    <div id="quiz-grid-wrap" class="quiz-grid-wrap" style="display:none">
+      <div class="grid-legend">
+        點數字可跳題　·　<span class="lg-ans"></span>已作答　<span class="lg-no"></span>未作答
+      </div>
+      <div id="quiz-grid" class="quiz-grid"></div>
+    </div>
+    <button id="btn-finish" class="btn-primary" style="display:none">交卷</button>
+  </main>
+
+  <!-- Screen: Result (測驗結果) -->
+  <main id="screen-result" class="screen">
+    <h2>測驗結果</h2>
+    <p id="result-summary" class="stats-overall"></p>
+    <div id="result-list" class="review-list"></div>
+    <div class="result-actions">
+      <button id="btn-redo"  class="btn-nav">再做一組</button>
+      <button id="btn-home-from-result" class="btn-nav">回首頁</button>
+    </div>
+  </main>
+
+  <!-- Screen: Stats -->
+  <main id="screen-stats" class="screen">
+    <h2>整體統計</h2>
+    <p id="stats-overall" class="stats-overall"></p>
+    <h2>各科答對率</h2>
+    <div class="table-wrap">
+      <table id="stats-table" class="stats-table">
+        <thead><tr><th>考試</th><th>科目</th><th>答題數</th><th>答對率</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <h2>錯題本</h2>
+    <div id="wrong-list" class="wrong-list"></div>
+    <h2>資料備份</h2>
+    <p class="backup-hint">作答記錄與書籤只存在這支手機。換手機或清除資料前，請先匯出備份。</p>
+    <div class="backup-actions">
+      <button id="btn-export" class="btn-nav">匯出備份</button>
+      <button id="btn-import" class="btn-nav">匯入還原</button>
+      <input id="import-file" type="file" accept="application/json" hidden>
+    </div>
+  </main>
+
+  <script src="store.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
