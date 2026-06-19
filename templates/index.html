@@ -23,27 +23,20 @@
     </div>
     <div class="filters card">
       <div class="filter-row">
-        <label>年份<select id="filter-year"><option value="0">全部</option></select></label>
-        <label>科目<select id="filter-subject"><option value="">全部</option></select></label>
-        <label id="track-label">組別
-          <select id="filter-track">
-            <option value="">全部</option>
-            <option value="司">司法官</option>
-            <option value="律">律師</option>
-          </select>
-        </label>
-      </div>
-      <div class="filter-row">
         <span class="filter-label">模式</span>
         <div class="radio-group">
-          <label><input type="radio" name="mode" value="sequential" checked>順序練習</label>
-          <label><input type="radio" name="mode" value="random">隨機測驗（20題）</label>
-          <label><input type="radio" name="mode" value="wrong">只練錯題</label>
+          <label><input type="radio" name="mode" value="paper" checked>考卷模式</label>
+          <label><input type="radio" name="mode" value="random">隨機模式</label>
         </div>
       </div>
+      <div class="filter-row" id="paper-filters">
+        <label>年份<select id="filter-year"></select></label>
+        <label>科目<select id="filter-subject"></select></label>
+      </div>
+      <p id="mode-hint" class="mode-hint"></p>
     </div>
     <p id="home-stats" class="home-stats">載入中...</p>
-    <button id="btn-start" class="btn-primary">開始練習</button>
+    <button id="btn-start" class="btn-primary">開始測驗</button>
   </main>
 
   <!-- Screen: Quiz -->

@@ -67,6 +67,16 @@ def test_get_filters():
     assert 108 in f['silu']['years']
     assert '刑法' in f['silu']['subjects']
 
+def test_filters_subjects_by_year():
+    db.insert_questions([
+        _q(year=108, subject='民法'),
+        _q(year=108, subject='刑法', question_no=2),
+        _q(year=109, subject='憲法', question_no=3),
+    ])
+    sby = db.get_filters()['silu']['subjects_by_year']
+    assert set(sby['108']) == {'民法', '刑法'}
+    assert sby['109'] == ['憲法']
+
 def test_mode_wrong_filter():
     db.insert_questions([_q(), _q(question_no=2)])
     q1id = db.get_questions('silu')[0]['id']

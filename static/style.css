@@ -40,6 +40,7 @@ select { border: 1px solid var(--border); border-radius: 4px; padding: 8px; font
 .radio-group { display: flex; flex-wrap: wrap; gap: 10px; }
 .radio-group label { flex-direction: row; align-items: center; gap: 6px; font-size: 1rem; color: var(--text); cursor: pointer; min-height: var(--touch); }
 
+.mode-hint { font-size: .85rem; color: var(--muted); margin-top: 4px; }
 .home-stats { text-align: center; color: var(--muted); margin-bottom: 12px; }
 .btn-primary { display: block; width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius); font-size: 1.1rem; cursor: pointer; min-height: var(--touch); }
 .btn-primary:hover { background: var(--primary-dark); }

@@ -39,7 +39,24 @@ const App = {
         this._updateFilterDropdowns();
       };
     });
+    document.querySelectorAll('input[name="mode"]').forEach(r => {
+      r.onchange = () => this._applyModeUI();
+    });
+    document.getElementById('filter-year').onchange = () => this._populateSubjects();
     document.getElementById('btn-start').onclick = () => this._startQuiz();
+    this._applyModeUI();
+  },
+
+  _currentMode() {
+    return document.querySelector('input[name="mode"]:checked').value;
+  },
+
+  _applyModeUI() {
+    const mode = this._currentMode();
+    document.getElementById('paper-filters').style.display = mode === 'paper' ? '' : 'none';
+    document.getElementById('mode-hint').textContent = mode === 'paper'
+      ? '照當年度該科目，整張考卷作答；交卷後檢討。'
+      : '從全部題庫隨機抽 20 題；交卷後檢討。';
   },
 
   _bindExam() {
@@ -55,20 +72,22 @@ const App = {
   },
 
   _updateFilterDropdowns() {
-    const f = (this._filters || {})[this.exam] || { years: [], subjects: [], tracks: [] };
-
+    const f = (this._filters || {})[this.exam] || { years: [], subjects_by_year: {} };
     const yearSel = document.getElementById('filter-year');
-    yearSel.innerHTML = '<option value="0">全部</option>';
-    f.years.forEach(y => yearSel.insertAdjacentHTML('beforeend',
+    yearSel.innerHTML = '';
+    // 最新年份排前面
+    f.years.slice().reverse().forEach(y => yearSel.insertAdjacentHTML('beforeend',
       `<option value="${y}">${y} 年</option>`));
+    this._populateSubjects();
+  },
 
-    const subjectSel = document.getElementById('filter-subject');
-    subjectSel.innerHTML = '<option value="">全部</option>';
-    f.subjects.forEach(s => subjectSel.insertAdjacentHTML('beforeend',
-      `<option value="${s}">${s}</option>`));
-
-    document.getElementById('track-label').style.display =
-      this.exam === 'silu' ? '' : 'none';
+  _populateSubjects() {
+    const f = (this._filters || {})[this.exam] || { subjects_by_year: {} };
+    const year = document.getElementById('filter-year').value;
+    const subs = (f.subjects_by_year || {})[year] || [];
+    const sel = document.getElementById('filter-subject');
+    sel.innerHTML = '';
+    subs.forEach(s => sel.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
   },
 
   async _refreshHomeStats() {
@@ -85,19 +104,25 @@ const App = {
   },
 
   async _startQuiz() {
-    const year    = document.getElementById('filter-year').value;
-    const subject = document.getElementById('filter-subject').value;
-    const track   = this.exam === 'silu' ? document.getElementById('filter-track').value : '';
-    const mode    = document.querySelector('input[name="mode"]:checked').value;
-    this.examMode = (mode === 'random');           // 隨機 = 測驗模式
-    const limit   = this.examMode ? 20 : 9999;     // 測驗一組抽 20 題
-    const params  = new URLSearchParams({ exam_type: this.exam, year, subject, track, mode, limit });
+    const mode = this._currentMode();
+    let params;
+    if (mode === 'paper') {
+      const year    = document.getElementById('filter-year').value;
+      const subject = document.getElementById('filter-subject').value;
+      if (!year || !subject) { alert('請選擇年份與科目'); return; }
+      params = new URLSearchParams({
+        exam_type: this.exam, year, subject, mode: 'sequential', limit: 9999 });
+    } else {
+      // 隨機模式：不選年份科目，從全題庫抽 20 題
+      params = new URLSearchParams({ exam_type: this.exam, mode: 'random', limit: 20 });
+    }
     const r = await fetch(`/api/questions?${params}`);
     this.questions = await r.json();
     if (!this.questions.length) { alert('找不到符合條件的題目'); return; }
+    this.examMode    = true;   // 兩種模式都是考完才看結果
     this.current     = 0;
-    this.answered    = {};   // 練習模式：已揭曉的題
-    this.examChoices = {};   // 測驗模式：暫存選擇（交卷前不揭曉）
+    this.answered    = {};
+    this.examChoices = {};     // 暫存選擇（交卷前不揭曉）
     this._showScreen('quiz');
     this._renderQuestion();
   },
@@ -108,10 +133,7 @@ const App = {
     const q = this.questions[this.current];
     if (!q) return;
 
-    document.getElementById('quiz-meta').textContent =
-      this.examMode
-        ? `測驗模式　${q.subject}`
-        : `${q.year}年 ${q.subject}${q.track ? ' ' + q.track : ''}`;
+    document.getElementById('quiz-meta').textContent = `${q.year}年 ${q.subject}`;
     document.getElementById('quiz-progress').textContent =
       `第 ${this.current + 1} / ${this.questions.length} 題`;
     document.getElementById('quiz-question').textContent =
@@ -258,10 +280,13 @@ const App = {
         `你的答案：${res.chosen || '（未作答）'}　正解：${res.answer || '（未提供）'}`;
       item.appendChild(ansLine);
 
-      const exp = document.createElement('div');
-      exp.className = 'review-exp';
-      exp.textContent = `詳解：${res.explanation || '（尚未提供）'}`;
-      item.appendChild(exp);
+      // 只有答錯（含未作答）才顯示詳解
+      if (!res.correct) {
+        const exp = document.createElement('div');
+        exp.className = 'review-exp';
+        exp.textContent = `詳解：${res.explanation || '（尚未提供）'}`;
+        item.appendChild(exp);
+      }
 
       list.appendChild(item);
     });

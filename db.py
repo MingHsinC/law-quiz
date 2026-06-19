@@ -89,7 +89,8 @@ def get_questions(exam_type: str, year: int = 0, subject: str = '',
                            WHERE a2.question_id = a1.question_id
                            ORDER BY answered_at DESC, id DESC LIMIT 1))""")
     where = ' AND '.join(clauses)
-    order = 'RANDOM()' if mode == 'random' else 'year, question_no'
+    # 考卷模式：同年同科若有司/律兩卷，依 track 分組再依題號排序
+    order = 'RANDOM()' if mode == 'random' else 'year, track, question_no'
     with get_conn() as conn:
         rows = conn.execute(
             f"SELECT * FROM questions WHERE {where} ORDER BY {order} LIMIT ?",
@@ -159,18 +160,24 @@ def get_filters() -> dict:
     with get_conn() as conn:
         def fetch(sql, *args):
             return [r[0] for r in conn.execute(sql, args).fetchall()]
-        return {
-            'silu': {
-                'years':    fetch("SELECT DISTINCT year FROM questions WHERE exam_type='silu' ORDER BY year"),
-                'subjects': fetch("SELECT DISTINCT subject FROM questions WHERE exam_type='silu' ORDER BY subject"),
-                'tracks':   ['司', '律']
-            },
-            'investigation': {
-                'years':    fetch("SELECT DISTINCT year FROM questions WHERE exam_type='investigation' ORDER BY year"),
-                'subjects': fetch("SELECT DISTINCT subject FROM questions WHERE exam_type='investigation' ORDER BY subject"),
-                'tracks':   []
+        out = {}
+        for et in ('silu', 'investigation'):
+            years = fetch(
+                "SELECT DISTINCT year FROM questions WHERE exam_type=? ORDER BY year", et)
+            subjects = fetch(
+                "SELECT DISTINCT subject FROM questions WHERE exam_type=? ORDER BY subject", et)
+            subjects_by_year = {
+                str(y): fetch(
+                    "SELECT DISTINCT subject FROM questions WHERE exam_type=? AND year=? "
+                    "ORDER BY subject", et, y)
+                for y in years
             }
-        }
+            out[et] = {
+                'years': years,
+                'subjects': subjects,
+                'subjects_by_year': subjects_by_year,
+            }
+        return out
 
 def get_bookmarked_ids() -> list[int]:
     with get_conn() as conn:
