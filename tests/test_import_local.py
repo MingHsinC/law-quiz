@@ -1,6 +1,6 @@
 from import_local import (
     parse_local_filename, split_stem_options,
-    parse_explanation_file, explanation_filename_meta,
+    parse_explanation_file, explanation_filename_meta, parse_solution_file,
 )
 
 
@@ -53,8 +53,36 @@ def test_split_returns_none_when_incomplete():
 def test_explanation_filename_meta():
     assert explanation_filename_meta('110綜合法學(一)(刑法)_詳解.txt') == (110, '綜合法學(一)(刑法)')
 
+def test_explanation_filename_meta_suffix_variants():
+    # 後綴可為 _解答 / )詳解（檔名不一致）
+    assert explanation_filename_meta('112綜合法學(一)(刑法)_解答.txt') == (112, '綜合法學(一)(刑法)')
+    assert explanation_filename_meta('111綜合法學(二)(民法)）詳解.txt'.replace('）', ')')) \
+        == (111, '綜合法學(二)(民法)')
+
 def test_explanation_filename_meta_non_match():
     assert explanation_filename_meta('110綜合法學(一)(刑法).txt') is None
+
+def test_parse_solution_file_full_block():
+    # 詳解檔含完整題目＋全形選項＋答案，可建題
+    text = (
+        '【第1題】\n關於某概念，下列何者錯誤？\n'
+        '（A）甲說\n（B）乙說\n（C）丙說\n（D）丁說\n.\n答：D\n.\nA 對\n理由甲。\n'
+    )
+    rec = parse_solution_file(text)[1]
+    assert rec['text'] == '關於某概念，下列何者錯誤？'
+    assert rec['A'] == '甲說' and rec['D'] == '丁說'
+    assert rec['answer'] == 'D'
+    assert rec['explanation'].startswith('答：D')
+
+def test_parse_solution_file_no_answer():
+    text = '【第1題】\n某題？\n（A）甲\n（B）乙\n（C）丙\n（D）丁\n'
+    rec = parse_solution_file(text)[1]
+    assert rec['answer'] is None
+    assert rec['text'] == '某題？' and rec['D'] == '丁'
+
+def test_parse_solution_answer_in_parens():
+    text = '【第1題】\n題？\n（A）甲\n（B）乙\n（C）丙\n（D）丁\n答：（B）\n解析…'
+    assert parse_solution_file(text)[1]['answer'] == 'B'
 
 def test_parse_explanation_file():
     text = (

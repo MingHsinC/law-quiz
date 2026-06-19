@@ -203,28 +203,84 @@ def import_113(path: Path) -> list[dict]:
 
 # ─────────────────────────── 詳解 txt（topic/詳解/<年>/） ───────────────────────────
 
-def parse_explanation_file(text: str) -> dict[int, str]:
-    """把詳解檔拆成 {題號: 詳解}。
-    每題以「【第N題】」分隔；詳解取「答：」起的內容（去掉重述的題目與選項）。"""
-    out: dict[int, str] = {}
+_OPT_RE = re.compile(r'[（(]([A-D])[）)]\s*(.*?)(?=[（(][A-D][）)]|$)', re.DOTALL)
+
+
+def parse_solution_file(text: str) -> dict[int, dict]:
+    """把詳解/解答檔拆成 {題號: {text, A, B, C, D, answer, explanation}}。
+    每題以「【第N題】」分隔；含完整題目、選項（全形/半形括號）、答案與詳解。
+    詳解取「答：」起的內容；無「答：」者 answer 與 explanation 為 None。
+    若選項無法解析成 4 個，text/選項為 None（仍保留 answer/explanation）。"""
+    out: dict[int, dict] = {}
     parts = re.split(r'【第\s*(\d+)\s*題】', text)
-    # parts = [前言, '1', body1, '2', body2, ...]
     for i in range(1, len(parts), 2):
         no = int(parts[i])
         body = parts[i + 1] if i + 1 < len(parts) else ''
-        m = re.search(r'答\s*[：:]', body)
-        expl = (body[m.start():] if m else body).strip()
-        if expl:
-            out[no] = expl
+        body = '\n'.join(l for l in body.splitlines() if l.strip() != '.')  # 去掉單獨的 . 分隔行
+        # 詳解邊界：「答：」出現處（寬鬆，不論後面答案是否可解析）
+        mb = re.search(r'答\s*[：:]', body)
+        qopt = body[:mb.start()] if mb else body
+        expl = body[mb.start():].strip() if mb else None
+        # 答案字母：答：後（可含括號）的 A–E（送分題可多字母）
+        ma = re.search(r'答\s*[：:]\s*[（(]?([A-E]+)', body)
+        answer = ma.group(1) if ma else None
+        rec = {'no': no, 'answer': answer, 'explanation': expl,
+               'text': None, 'A': None, 'B': None, 'C': None, 'D': None}
+        opts = {m.group(1): re.sub(r'\s+', ' ', m.group(2)).strip()
+                for m in _OPT_RE.finditer(qopt)}
+        first = _OPT_RE.search(qopt)
+        if len(opts) == 4 and all(opts.values()) and first:
+            stem = re.sub(r'\s+', ' ', qopt[:first.start()]).strip()
+            if stem:
+                rec.update({'text': stem, 'A': opts['A'], 'B': opts['B'],
+                            'C': opts['C'], 'D': opts['D']})
+        out[no] = rec
     return out
 
 
+def parse_explanation_file(text: str) -> dict[int, str]:
+    """只取 {題號: 詳解}（供既有題目套用詳解用）。"""
+    return {no: rec['explanation']
+            for no, rec in parse_solution_file(text).items() if rec['explanation']}
+
+
 def explanation_filename_meta(fname: str) -> tuple[int, str] | None:
-    """'110綜合法學(一)(刑法…)_詳解.txt' → (110, '綜合法學(一)(刑法…)')"""
-    m = re.match(r'^(\d+)(.+?)_詳解\.txt$', fname)
+    """'110…(刑法)_詳解.txt' / '…)_解答.txt' / '…))詳解.txt' → (年份, 科目)。
+    後綴 _詳解 / _解答 / )詳解 皆可。"""
+    m = re.match(r'^(\d+)(.+?)[_)]?(?:詳解|解答)\.txt$', fname)
     if not m:
         return None
     return int(m.group(1)), m.group(2)
+
+
+def import_solutions_as_questions(year: int) -> list[dict]:
+    """從 topic/詳解/<year>/ 直接建題目（題目 PDF 無答案時用，答案取自詳解檔）。"""
+    root = TOPIC / '詳解' / str(year)
+    records: list[dict] = []
+    if not root.is_dir():
+        return records
+    for f in sorted(root.glob('*.txt')):
+        meta = explanation_filename_meta(f.name)
+        if not meta:
+            continue
+        fyear, subject = meta
+        sols = parse_solution_file(f.read_text(encoding='utf-8'))
+        n = no_ans = 0
+        for no, rec in sols.items():
+            if not rec['text']:
+                continue  # 選項解析失敗，略過
+            records.append({
+                'exam_type': 'silu', 'year': fyear, 'subject': subject, 'track': None,
+                'question_no': no, 'question_text': rec['text'],
+                'opt_a': rec['A'], 'opt_b': rec['B'], 'opt_c': rec['C'], 'opt_d': rec['D'],
+                'answer': rec['answer'], 'explanation': None,  # 詳解由 import_explanations 套用
+            })
+            n += 1
+            if not rec['answer']:
+                no_ans += 1
+        suffix = f'（其中 {no_ans} 題無答案）' if no_ans else ''
+        print(f'  ✓ {fyear} {subject}：{n} 題{suffix}')
+    return records
 
 
 def import_explanations() -> int:
@@ -257,13 +313,16 @@ def main():
     print('=== 從本機 topic/ 匯入司律一試題庫 ===\n')
     db.init_db()
 
-    print('【1/3】100–111 年（考選部 txt）')
+    print('【1/4】100–111 年（考選部 txt）')
     recs = import_txt_years()
 
-    print('\n【2/3】114 年（xlsx，含詳解）')
+    print('\n【2/4】112 年（題目取自詳解檔，PDF 無答案）')
+    recs += import_solutions_as_questions(112)
+
+    print('\n【3/4】114 年（xlsx，含詳解）')
     recs += import_114(TOPIC / '114_law_exam.xlsx')
 
-    print('\n【3/3】113 年（xlsx，含詳解）')
+    print('\n【4/4】113 年（xlsx，含詳解）')
     recs += import_113(TOPIC / 'TaiLexi AI - 2024司律國考一試.xlsx')
 
     print('\n【寫入資料庫】')
