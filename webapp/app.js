@@ -9,6 +9,7 @@ const App = {
     this._bindHome();
     this._bindExam();
     this._bindBackup();
+    Store.onUpdated = (n) => this._onBankUpdated(n);  // 題庫背景更新後回呼
     await Store.load();           // 載入題庫 + 開啟本機 IndexedDB
     this._loadFilters();
     await this._refreshHomeStats();
@@ -28,6 +29,18 @@ const App = {
   _bindNav() {
     document.getElementById('nav-home').onclick  = () => this._showScreen('home');
     document.getElementById('nav-stats').onclick = () => this._showScreen('stats');
+  },
+
+  // 題庫在背景更新完成：重整選單並顯示提示
+  _onBankUpdated(count) {
+    this._loadFilters();
+    this._refreshHomeStats();
+    const el = document.getElementById('update-banner');
+    if (!el) return;
+    el.textContent = `✅ 題庫已更新（共 ${count} 題）`;
+    el.style.display = 'block';
+    clearTimeout(this._bannerTimer);
+    this._bannerTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
   },
 
   // ── Home ────────────────────────────────────────────────

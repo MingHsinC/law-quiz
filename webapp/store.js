@@ -1,6 +1,9 @@
 // store.js — 離線資料層：取代原本 Flask 的 /api/* 後端。
 // 題目來自 questions.json（隨 App 打包）；作答記錄與書籤存在手機本機 IndexedDB。
 
+// 與 service-worker.js 的 CACHE_NAME 保持一致（題庫更新時用來寫回快取）
+const CACHE_NAME = 'lawquiz-v1';
+
 // ── 極簡 IndexedDB 包裝 ─────────────────────────────────────
 const IDB = {
   _db: null,
@@ -36,15 +39,50 @@ const Store = {
   byId: {},
   _filters: null,
   _bookmarkSet: new Set(),
+  onUpdated: null,   // 題庫背景更新完成後呼叫（由 app.js 設定）
 
   async load() {
     await IDB.open();
-    const r = await fetch('questions.json');
-    this.questions = await r.json();
+    const r = await fetch('questions.json');     // SW cache-first → 離線秒開
+    this._setQuestions(await r.json());
+    await this._refreshBookmarkCache();
+    this._checkUpdate();                          // 連網時在背景比對版本，不阻塞畫面
+  },
+
+  _setQuestions(list) {
+    this.questions = list;
     this.byId = {};
     this.questions.forEach((q) => { this.byId[q.id] = q; });
     this._buildFilters();
-    await this._refreshBookmarkCache();
+  },
+
+  // 比對 version.json；有新版就背景重抓題庫並更新快取（離線或失敗則安靜略過）
+  async _checkUpdate() {
+    try {
+      const res = await fetch('version.json', { cache: 'no-store' });
+      if (!res.ok) return;
+      const remote = (await res.json()).version;
+      const local = localStorage.getItem('questions_version');
+      if (!local) {                 // 首次：目前打包的題庫即對應此版本，記錄即可
+        localStorage.setItem('questions_version', remote);
+        return;
+      }
+      if (remote === local) return; // 已是最新
+
+      // 用帶版本參數的網址繞過 SW 的 cache-first，強制抓最新題庫
+      const fresh = await fetch(`questions.json?v=${remote}`, { cache: 'reload' });
+      if (!fresh.ok) return;
+      const data = await fresh.clone().json();
+      if ('caches' in self) {       // 寫回快取，讓下次離線也是新題庫
+        const c = await caches.open(CACHE_NAME);
+        await c.put('questions.json', fresh.clone());
+      }
+      this._setQuestions(data);
+      localStorage.setItem('questions_version', remote);
+      if (typeof this.onUpdated === 'function') this.onUpdated(data.length);
+    } catch (e) {
+      /* 離線或網路錯誤：維持現有題庫即可 */
+    }
   },
 
   async _refreshBookmarkCache() {

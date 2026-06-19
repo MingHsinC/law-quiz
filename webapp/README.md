@@ -33,9 +33,14 @@
 
 ## 更新題庫後
 
-1. 重跑 `python export_questions.py`（更新 `questions.json`）。
-2. 編輯 `service-worker.js`，把 `CACHE_VERSION` 的數字 +1（例如 `lawquiz-v1` → `lawquiz-v2`）。
-3. 重新 push / 部署。手機下次連網開啟時會自動更新題庫。
+1. 重跑 `python export_questions.py`（更新 `questions.json` 與 `version.json`）。
+2. push / 部署。
+
+手機端會自動偵測 `version.json` 變化，下次連網開啟時在背景重抓新題庫，
+並顯示「✅ 題庫已更新」橫幅 —— **不需要手動改 service worker**。
+
+> 只有在**改了 App 程式碼／結構**（html / js / css）時，才需要把
+> `service-worker.js` 的 `CACHE_VERSION` 數字 +1，強制刷新整個 App 殼。
 
 ## 本機預覽（電腦上先看效果）
 
